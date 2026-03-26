@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+build/
+dist/
+pdf2pptsoft/
+temp_images/
+temp_clean_images/
+PDFs/
+*.pptx
