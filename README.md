@@ -70,7 +70,7 @@ CLI options:
 - `.env.example`: sample environment file containing `GEMINI_API_KEY`.
 - `pdf2pptsoft.spec`: PyInstaller specification for packaging the GUI application.
 
-## 繁體中文摘要
+## 摘要
 
 PDF2PPt 是一個將簡報型 PDF 轉成可編輯 PowerPoint 檔案的 Python 工具。
 主要流程會先把 PDF 頁面轉成圖片，再使用 Gemini 擷取文字與位置資訊。
