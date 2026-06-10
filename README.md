@@ -1,41 +1,22 @@
 # PDF2PPt
 
-`PDF2PPt` converts slide-style PDF files into editable PowerPoint decks by combining:
-
-- PDF rasterization with PyMuPDF
-- OCR + layout extraction with Gemini
-- background cleanup with OpenCV inpainting
-- slide regeneration with `python-pptx`
-
-The project includes both a command-line entry point and a Tkinter desktop GUI.
-
-## Why This Project Matters
-
-This is a practical AI automation project aimed at a real workflow problem: turning static presentation PDFs into editable slides quickly enough for business, consulting, and academic reuse.
-
-It is a strong portfolio piece because it demonstrates:
-
-- desktop application development with Python
-- document processing and OCR workflows
-- integration with external AI services
-- pipeline design for partially recoverable long-running jobs
+PDF2PPt converts slide-oriented PDF files into editable PowerPoint decks using PDF rasterization, Gemini OCR, OpenCV inpainting, and `python-pptx`.
 
 ## Features
 
-- Select a PDF and convert only a chosen page range
-- Save Gemini API credentials locally via `.env`
-- Remove source text from rendered slide images before rebuilding slides
-- Produce partial output even if a later OCR page fails
-- Use either a GUI (`gui.py`) or CLI (`main.py`)
+- Converts selected PDF page ranges into PowerPoint slide decks.
+- Provides both a Tkinter desktop interface and a command-line workflow.
+- Uses Gemini to extract text and bounding boxes from rendered page images.
+- Removes detected source text from slide images before rebuilding editable text layers.
+- Saves partial output when at least one page is processed before a later page fails.
+- Can keep temporary page images for debugging through the CLI.
 
-## Project Structure
+## Requirements
 
-- `main.py`: CLI entry point and end-to-end conversion pipeline
-- `gui.py`: Tkinter desktop interface
-- `pdf_utils.py`: PDF page counting and rasterization
-- `ocr_service.py`: Gemini OCR extraction and bounding box parsing
-- `image_processor.py`: text removal via inpainting
-- `ppt_generator.py`: PowerPoint generation
+- Python 3.10 or newer.
+- A Gemini API key available as `GEMINI_API_KEY`.
+- Python packages listed in `requirements.txt`: `google-generativeai`, `opencv-python`, `Pillow`, `PyMuPDF`, `python-dotenv`, and `python-pptx`.
+- On Linux, a Tkinter-capable Python installation is required for the desktop GUI.
 
 ## Setup
 
@@ -46,39 +27,54 @@ It is a strong portfolio piece because it demonstrates:
 pip install -r requirements.txt
 ```
 
-3. Copy `.env.example` to `.env` and set your Gemini API key:
+3. Copy `.env.example` to a local .env file.
+4. Set the Gemini API key:
 
 ```env
 GEMINI_API_KEY=your-real-key
 ```
 
+The GUI can also create or update the local environment file when the API key is entered and saved from the application.
+
 ## Usage
 
-Run the desktop app:
+Run the desktop application:
 
 ```bash
 python gui.py
 ```
 
-Run the CLI:
+Run the command-line converter:
 
 ```bash
 python main.py input.pdf --output output.pptx --start-page 1 --end-page 5
 ```
 
-Optional CLI flags:
+CLI options:
 
-- `--api-key`: override the API key from the command line
-- `--keep-temp`: keep temporary page images for debugging
+- `--output`: output PowerPoint path. Defaults to output.pptx.
+- `--start-page`: first page to process, using 1-based numbering. Defaults to `1`.
+- `--end-page`: last page to process, using 1-based numbering.
+- `--api-key`: Gemini API key override. When omitted, the converter uses `GEMINI_API_KEY` from the local environment file.
+- `--keep-temp`: keeps generated page images and cleaned images beside the output file for debugging.
 
-## Notes
+## Project Structure
 
-- Generated `.pptx` outputs and packaged executables are intentionally ignored by git.
-- Temporary working folders are cleaned automatically unless `--keep-temp` is enabled.
-- Best results come from PDFs that already resemble presentation slides rather than dense scanned documents.
+- `main.py`: command-line entry point and end-to-end conversion pipeline.
+- `gui.py`: Tkinter desktop interface for selecting a PDF, output folder, API key, and page range.
+- `pdf_utils.py`: PDF page counting and page-to-image rendering with PyMuPDF.
+- `ocr_service.py`: Gemini configuration, OCR prompting, and bounding-box parsing.
+- `image_processor.py`: OpenCV-based text mask creation and inpainting.
+- `ppt_generator.py`: PowerPoint slide generation with background images and editable text boxes.
+- `requirements.txt`: Python runtime dependencies.
+- `.env.example`: sample environment file containing `GEMINI_API_KEY`.
+- `pdf2pptsoft.spec`: PyInstaller specification for packaging the GUI application.
 
-## Portfolio Positioning
+## 繁體中文摘要
 
-If you use this in job applications, frame it as:
-
-"An AI-assisted document transformation tool that reconstructs editable PowerPoint slides from PDF source material using OCR, layout extraction, and image cleanup."
+PDF2PPt 是一個將簡報型 PDF 轉成可編輯 PowerPoint 檔案的 Python 工具。
+主要流程會先把 PDF 頁面轉成圖片，再使用 Gemini 擷取文字與位置資訊。
+程式會用 OpenCV 嘗試移除原圖片上的文字，接著用 `python-pptx` 重建投影片。
+使用前需安裝 `requirements.txt` 內的套件，並在本機環境檔設定 `GEMINI_API_KEY`。
+桌面版可執行 `python gui.py`，命令列版可執行 `python main.py input.pdf --output output.pptx`。
+若轉換中途發生 OCR 或 API 錯誤，只要已有成功處理的頁面，程式仍會先輸出部分結果。
