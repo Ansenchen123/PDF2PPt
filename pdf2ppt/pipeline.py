@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Callable
 
 from pdf2ppt.background import clean_background
-from pdf2ppt.models import ConversionResult, ProviderOptions, QualityReport, SlideLayout
+from pdf2ppt.models import ConversionResult, ProviderOptions, SlideLayout
 from pdf2ppt.pdf import extract_native_text_blocks, render_pdf_pages
 from pdf2ppt.pptx_export import create_pptx
 from pdf2ppt.providers import get_provider
+from pdf2ppt.quality import summarize_layout_quality
 from pdf2ppt.reconstruction import build_slide_layout
 
 ProgressCallback = Callable[[int, int, str], None]
@@ -19,6 +20,7 @@ def convert_pdf_to_ppt(
     pdf_path: str | Path,
     output_ppt: str | Path,
     provider_name: str = "gemini",
+    target_provider: str | None = None,
     provider_model: str | None = None,
     api_key: str | None = None,
     proxy_url: str | None = None,
@@ -45,7 +47,7 @@ def convert_pdf_to_ppt(
         pages = render_pdf_pages(pdf_path, image_dir, start_page=start_page, end_page=end_page)
         provider = get_provider(provider_name)
         options = ProviderOptions(
-            provider=provider_name,
+            provider=target_provider or provider_name,
             model=provider_model,
             api_key=api_key,
             proxy_url=proxy_url,
@@ -89,14 +91,7 @@ def convert_pdf_to_ppt(
             layout.mask_path = cleanup.mask_path
             layout.overlay_path = cleanup.overlay_path
             layouts.append(layout)
-            reports.append(
-                QualityReport(
-                    page_number=page.page_number,
-                    text_block_count=len(layout.text_blocks),
-                    low_confidence_blocks=sum(1 for block in layout.text_blocks if block.confidence < 0.65),
-                    warnings=layout.warnings,
-                )
-            )
+            reports.append(summarize_layout_quality(layout))
 
         _emit(callback, len(layouts), len(layouts), "Writing PowerPoint")
         create_pptx(layouts, output_ppt)

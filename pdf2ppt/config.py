@@ -53,3 +53,13 @@ def get_provider_api_key(
 def get_proxy_config() -> tuple[str | None, str | None]:
     load_environment()
     return os.getenv("PDF2PPT_PROXY_URL"), os.getenv("PDF2PPT_PROXY_TOKEN")
+
+
+def set_provider_api_key(provider: str, api_key: str) -> None:
+    normalized = provider.lower()
+    if keyring is None:
+        env_key = PROVIDER_ENV_KEYS.get(normalized)
+        if env_key:
+            os.environ[env_key] = api_key
+        return
+    keyring.set_password(SERVICE_NAME, normalized, api_key)
