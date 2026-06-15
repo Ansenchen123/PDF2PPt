@@ -14,3 +14,5 @@ PySide6
 pytest
 pytest-qt
 scikit-image
+httpx2
+pyinstaller
