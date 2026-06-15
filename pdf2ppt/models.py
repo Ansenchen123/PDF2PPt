@@ -188,3 +188,12 @@ class QualityReport(BaseModel):
     text_block_count: int = Field(ge=0)
     low_confidence_blocks: int = Field(ge=0)
     warnings: list[str] = Field(default_factory=list)
+
+
+class ConversionResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    output_ppt: Path
+    layouts: list[SlideLayout]
+    quality_reports: list[QualityReport] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
