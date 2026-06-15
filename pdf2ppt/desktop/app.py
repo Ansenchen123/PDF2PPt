@@ -7,8 +7,8 @@ from pathlib import Path
 def run() -> int:
     try:
         from PySide6.QtCore import QUrl
-        from PySide6.QtGui import QGuiApplication
         from PySide6.QtQml import QQmlApplicationEngine
+        from PySide6.QtWidgets import QApplication
     except ImportError as exc:
         raise RuntimeError(
             "PySide6 is required for the commercial desktop app. Install dependencies with "
@@ -17,7 +17,7 @@ def run() -> int:
 
     from pdf2ppt.desktop.controller import AppController
 
-    app = QGuiApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setApplicationDisplayName("PDF2PPt Studio")
     app.setOrganizationName("PDF2PPt")
 
