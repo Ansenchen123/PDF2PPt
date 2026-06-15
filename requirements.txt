@@ -4,3 +4,13 @@ Pillow
 PyMuPDF
 python-dotenv
 python-pptx
+pydantic
+requests
+fastapi
+uvicorn
+python-multipart
+keyring
+PySide6
+pytest
+pytest-qt
+scikit-image

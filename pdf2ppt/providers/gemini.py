@@ -12,7 +12,7 @@ from pdf2ppt.providers.common import (
     extract_json_payload,
     image_mime_type,
     image_to_base64,
-    layout_json_schema,
+    gemini_layout_schema,
     post_json,
 )
 
@@ -38,7 +38,7 @@ class GeminiProvider(LayoutProvider):
             ],
             "generationConfig": {
                 "response_mime_type": "application/json",
-                "response_schema": layout_json_schema(),
+                "response_schema": gemini_layout_schema(),
             },
         }
 

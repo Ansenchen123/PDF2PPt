@@ -78,6 +78,23 @@ def layout_json_schema() -> dict[str, Any]:
     }
 
 
+def gemini_layout_schema() -> dict[str, Any]:
+    return _strip_unsupported_schema_keys(layout_json_schema())
+
+
+def _strip_unsupported_schema_keys(schema: Any) -> Any:
+    unsupported = {"additionalProperties", "minItems", "maxItems"}
+    if isinstance(schema, dict):
+        return {
+            key: _strip_unsupported_schema_keys(value)
+            for key, value in schema.items()
+            if key not in unsupported
+        }
+    if isinstance(schema, list):
+        return [_strip_unsupported_schema_keys(item) for item in schema]
+    return schema
+
+
 def image_to_base64(path: str | Path) -> str:
     return base64.b64encode(Path(path).read_bytes()).decode("ascii")
 
@@ -143,15 +160,29 @@ def post_json(
     payload: dict[str, Any],
     timeout_seconds: float,
 ) -> tuple[dict[str, Any], int, str | None]:
+    __tracebackhide__ = True
     started = time.perf_counter()
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=timeout_seconds)
-    except requests.RequestException as exc:
-        raise ProviderError(f"Provider request failed: {exc.__class__.__name__}") from exc
+    response = None
+    retryable_statuses = {429, 500, 502, 503, 504}
+    for attempt in range(3):
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout_seconds)
+        except requests.RequestException as exc:
+            if attempt == 2:
+                raise ProviderError(f"Provider request failed: {exc.__class__.__name__}") from exc
+            time.sleep(0.5 * (attempt + 1))
+            continue
+        if response.status_code not in retryable_statuses or attempt == 2:
+            break
+        retry_after = response.headers.get("retry-after")
+        delay = float(retry_after) if retry_after and retry_after.replace(".", "", 1).isdigit() else 0.5 * (attempt + 1)
+        time.sleep(min(delay, 3.0))
+    if response is None:
+        raise ProviderError("Provider request failed")
     duration_ms = round((time.perf_counter() - started) * 1000)
     request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
     if response.status_code >= 400:
-        raise ProviderError(f"Provider returned HTTP {response.status_code}")
+        raise ProviderError(f"Provider returned HTTP {response.status_code}", status_code=response.status_code)
     try:
         return response.json(), duration_ms, request_id
     except ValueError as exc:

@@ -94,6 +94,7 @@ def test_gemini_payload_uses_inline_data_and_response_schema(tmp_path: Path):
 
     assert payload["contents"][0]["parts"][0]["inline_data"]["mime_type"] == "image/png"
     assert payload["generationConfig"]["response_mime_type"] == "application/json"
+    assert "additionalProperties" not in json.dumps(payload["generationConfig"]["response_schema"])
 
 
 def test_mistral_payload_uses_chat_vision_image_url(tmp_path: Path):

@@ -1,80 +1,126 @@
-# PDF2PPt
+# PDF2PPt Studio
 
-PDF2PPt converts slide-oriented PDF files into editable PowerPoint decks using PDF rasterization, Gemini OCR, OpenCV inpainting, and `python-pptx`.
+PDF2PPt Studio converts slide-oriented PDFs into editable PowerPoint decks. The commercial rebuild uses a structured layout pipeline instead of sending bounding boxes directly to PowerPoint: every page is rendered, text/layout is normalized into a validated intermediate representation, backgrounds are cleaned with inspectable masks, and PPTX output is generated from that verified layout model.
 
-## Features
+## What changed
 
-- Converts selected PDF page ranges into PowerPoint slide decks.
-- Provides both a Tkinter desktop interface and a command-line workflow.
-- Uses Gemini to extract text and bounding boxes from rendered page images.
-- Removes detected source text from slide images before rebuilding editable text layers.
-- Saves partial output when at least one page is processed before a later page fails.
-- Can keep temporary page images for debugging through the CLI.
-
-## Requirements
-
-- Python 3.10 or newer.
-- A Gemini API key available as `GEMINI_API_KEY`.
-- Python packages listed in `requirements.txt`: `google-generativeai`, `opencv-python`, `Pillow`, `PyMuPDF`, `python-dotenv`, and `python-pptx`.
-- On Linux, a Tkinter-capable Python installation is required for the desktop GUI.
+- Native Windows-first desktop app entrypoint powered by PySide6 / Qt Quick.
+- Provider-neutral multimodal extraction layer for OpenAI, Gemini, Claude, Mistral, a managed proxy, and a deterministic mock provider.
+- Pydantic layout IR for `TextBlock`, `TextStyle`, `SlideLayout`, `ProviderResult`, and quality reports.
+- Improved background cleanup with text-shaped masks, inpainted clean images, and debug overlays.
+- PPTX generation uses real page aspect ratio, estimated font size, color, weight, alignment, and line spacing.
+- FastAPI managed proxy with bearer auth, rate limiting, request counting, and structured errors.
+- Test suite covering schema validation, PDF rendering, PPTX export, provider payloads, proxy behavior, CLI, desktop contracts, and visual quality primitives.
 
 ## Setup
 
-1. Create and activate a virtual environment.
-2. Install dependencies:
-
-```bash
-pip install -r requirements.txt
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-3. Copy `.env.example` to a local .env file.
-4. Set the Gemini API key:
+Set one or more provider keys in `.env`, or store keys from the desktop app:
 
 ```env
-GEMINI_API_KEY=your-real-key
+OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+ANTHROPIC_API_KEY=...
+MISTRAL_API_KEY=...
 ```
 
-The GUI can also create or update the local environment file when the API key is entered and saved from the application.
+## Desktop App
 
-## Usage
-
-Run the desktop application:
-
-```bash
+```powershell
 python gui.py
 ```
 
-Run the command-line converter:
+The desktop app supports:
 
-```bash
-python main.py input.pdf --output output.pptx --start-page 1 --end-page 5
+- PDF selection, output path selection, and page range control.
+- BYOK mode for local provider keys.
+- Managed proxy mode for server-side keys.
+- Provider switching between Gemini, OpenAI, Claude, Mistral, and mock.
+- Background progress and completion status.
+
+## CLI
+
+```powershell
+python main.py PDFs\Financial_Analysis_and_Value.pdf --output output.pptx --provider gemini --start-page 1 --end-page 3
 ```
 
-CLI options:
+Useful options:
 
-- `--output`: output PowerPoint path. Defaults to output.pptx.
-- `--start-page`: first page to process, using 1-based numbering. Defaults to `1`.
-- `--end-page`: last page to process, using 1-based numbering.
-- `--api-key`: Gemini API key override. When omitted, the converter uses `GEMINI_API_KEY` from the local environment file.
-- `--keep-temp`: keeps generated page images and cleaned images beside the output file for debugging.
+- `--provider gemini|openai|anthropic|mistral|mock`
+- `--model`: provider model override
+- `--auth-mode byok|proxy`
+- `--api-key`: one-off local key override
+- `--proxy-url` and `--proxy-token`
+- `--keep-temp`: keep rendered pages, clean backgrounds, masks, and overlays
+
+## Managed Proxy
+
+Run the proxy locally:
+
+```powershell
+uvicorn server.app:app --host 127.0.0.1 --port 8000
+```
+
+Required server-side environment:
+
+```env
+PDF2PPT_PROXY_TOKEN=change-me
+PDF2PPT_RATE_LIMIT_PER_MINUTE=60
+```
+
+Endpoints:
+
+- `GET /v1/providers`
+- `GET /v1/usage`
+- `POST /v1/extract-layout`
+
+All proxy endpoints require `Authorization: Bearer <token>` and return structured errors:
+
+```json
+{"error":{"code":"UNAUTHORIZED","message":"Bearer token is required"}}
+```
+
+## Tests
+
+Run the default suite:
+
+```powershell
+python -m pytest -q
+```
+
+Run paid live provider smoke tests only when explicitly enabled:
+
+```powershell
+$env:PDF2PPT_LIVE_TESTS="1"
+python -m pytest tests/test_live_providers.py -q
+```
+
+The live smoke currently exercises Gemini when `GEMINI_API_KEY` is configured.
+
+## Packaging
+
+Build the Windows desktop executable:
+
+```powershell
+pyinstaller pdf2pptsoft.spec
+```
+
+The spec bundles the QML workspace under `pdf2ppt/desktop/ui`.
 
 ## Project Structure
 
-- `main.py`: command-line entry point and end-to-end conversion pipeline.
-- `gui.py`: Tkinter desktop interface for selecting a PDF, output folder, API key, and page range.
-- `pdf_utils.py`: PDF page counting and page-to-image rendering with PyMuPDF.
-- `ocr_service.py`: Gemini configuration, OCR prompting, and bounding-box parsing.
-- `image_processor.py`: OpenCV-based text mask creation and inpainting.
-- `ppt_generator.py`: PowerPoint slide generation with background images and editable text boxes.
-- `requirements.txt`: Python runtime dependencies.
-- `.env.example`: sample environment file containing `GEMINI_API_KEY`.
-- `pdf2pptsoft.spec`: PyInstaller specification for packaging the GUI application.
-
-## 摘要
-
-PDF2PPt 是一個將簡報型 PDF 轉成可編輯 PowerPoint 檔案的 Python 工具。
-主要流程會先把 PDF 頁面轉成圖片，再使用 Gemini 擷取文字與位置資訊。
-程式會用 OpenCV 嘗試移除原圖片上的文字，接著用 `python-pptx` 重建投影片。
-使用前需安裝 `requirements.txt` 內的套件，並在本機環境檔設定 `GEMINI_API_KEY`。
-桌面版可執行 `python gui.py`，命令列版可執行 `python main.py input.pdf --output output.pptx`。
-若轉換中途發生 OCR 或 API 錯誤，只要已有成功處理的頁面，程式仍會先輸出部分結果。
+- `pdf2ppt/models.py`: validated layout IR and conversion result types.
+- `pdf2ppt/providers/`: OpenAI, Gemini, Claude, Mistral, proxy, and mock adapters.
+- `pdf2ppt/pdf.py`: PDF page counting, rendering, and native text extraction.
+- `pdf2ppt/background.py`: text-shaped mask generation and inpainting.
+- `pdf2ppt/pptx_export.py`: PPTX generation from `SlideLayout`.
+- `pdf2ppt/pipeline.py`: end-to-end conversion orchestration.
+- `pdf2ppt/desktop/`: PySide6/Qt Quick desktop app.
+- `server/app.py`: managed provider proxy.
+- `tests/`: unit, integration, proxy, CLI, desktop contract, quality, and opt-in live tests.
